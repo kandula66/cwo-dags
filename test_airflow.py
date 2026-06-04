@@ -13,6 +13,5 @@ with DAG(
     run_airflow_test_job = CdeRunJobOperator(
         task_id="run_airflow_test",
         job_name="airflow_test",
-        connection_id="sstcwocde",
-        wait_for_completion=True
+        connection_id="sstcwocde"
     )
