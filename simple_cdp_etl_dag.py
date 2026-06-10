@@ -76,18 +76,13 @@ with DAG(
             type="string",
             description="Data Hub Impala database used by the SQL step.",
         ),
-        "cde_job_name": Param(
-            "simple-cdp-sales-etl",
-            type="string",
-            description="Existing CDE Spark job that runs spark/jobs/clean_sales.py.",
-        ),
     },
     tags=["cdp", "cde", "spark", "impala", "example"],
 ) as dag:
     run_cde_spark_transform = CdeRunJobOperator(
         task_id="run_cde_spark_transform",
         connection_id="sstcwocde",
-        job_name="{{ params.cde_job_name }}",
+        job_name="simple-cdp-sales-etl",
         variables={
             "raw_sales_path": "{{ params.raw_sales_path }}",
             "clean_sales_path": "{{ params.clean_sales_path }}",
