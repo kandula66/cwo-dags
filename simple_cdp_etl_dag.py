@@ -14,36 +14,10 @@ from airflow.models.param import Param
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from cloudera.airflow.providers.operators.cde import CdeRunJobOperator
 
-sales_summary_sql = """
-CREATE DATABASE IF NOT EXISTS {{ params.impala_database }};
-
-CREATE EXTERNAL TABLE IF NOT EXISTS {{ params.impala_database }}.clean_sales (
-    order_id STRING,
-    customer_id STRING,
-    product_name STRING,
-    quantity INT,
-    unit_price DOUBLE,
-    total_amount DOUBLE
-)
-PARTITIONED BY (order_date DATE)
-STORED AS PARQUET
-LOCATION '{{ params.clean_sales_path }}';
-
-INVALIDATE METADATA {{ params.impala_database }}.clean_sales;
-
-ALTER TABLE {{ params.impala_database }}.clean_sales RECOVER PARTITIONS;
-
-DROP VIEW IF EXISTS {{ params.impala_database }}.sales_revenue_by_order_date;
-
-CREATE VIEW {{ params.impala_database }}.sales_revenue_by_order_date AS
-SELECT
-    order_date,
-    COUNT(DISTINCT order_id) AS order_count,
-    SUM(quantity) AS units_sold,
-    ROUND(SUM(total_amount), 2) AS total_revenue
-FROM {{ params.impala_database }}.clean_sales
-GROUP BY order_date;
-"""
+DAG_ID = "simple_cdp_sales_etl"
+CDE_CONN_ID = "sstcwocde"
+CDE_JOB_NAME = "simple-cdp-sales-etl"
+IMPALA_CONN_ID = "datahub_impala"
 
 
 default_args = {
@@ -53,8 +27,42 @@ default_args = {
 }
 
 
-with DAG(
-    dag_id="simple_cdp_sales_etl",
+def create_sales_summary_sql() -> str:
+    sql = """
+    CREATE DATABASE IF NOT EXISTS {{ params.impala_database }};
+
+    CREATE EXTERNAL TABLE IF NOT EXISTS {{ params.impala_database }}.clean_sales (
+        order_id STRING,
+        customer_id STRING,
+        product_name STRING,
+        quantity INT,
+        unit_price DOUBLE,
+        total_amount DOUBLE
+    )
+    PARTITIONED BY (order_date DATE)
+    STORED AS PARQUET
+    LOCATION '{{ params.clean_sales_path }}';
+
+    INVALIDATE METADATA {{ params.impala_database }}.clean_sales;
+
+    ALTER TABLE {{ params.impala_database }}.clean_sales RECOVER PARTITIONS;
+
+    DROP VIEW IF EXISTS {{ params.impala_database }}.sales_revenue_by_order_date;
+
+    CREATE VIEW {{ params.impala_database }}.sales_revenue_by_order_date AS
+    SELECT
+        order_date,
+        COUNT(DISTINCT order_id) AS order_count,
+        SUM(quantity) AS units_sold,
+        ROUND(SUM(total_amount), 2) AS total_revenue
+    FROM {{ params.impala_database }}.clean_sales
+    GROUP BY order_date;
+    """
+    return sql
+
+
+dag = DAG(
+    dag_id=DAG_ID,
     description="Simple CDP ETL using CDE and SQL operators.",
     start_date=datetime(2026, 1, 1),
     schedule=None,
@@ -78,24 +86,28 @@ with DAG(
         ),
     },
     tags=["cdp", "cde", "spark", "impala", "example"],
-) as dag:
-    run_cde_spark_transform = CdeRunJobOperator(
-        task_id="run_cde_spark_transform",
-        connection_id="sstcwocde",
-        job_name="simple-cdp-sales-etl",
-        variables={
-            "raw_sales_path": "{{ params.raw_sales_path }}",
-            "clean_sales_path": "{{ params.clean_sales_path }}",
-        },
-        wait=True,
-    )
+)
 
-    run_impala_sql = SQLExecuteQueryOperator(
-        task_id="run_datahub_impala_sql",
-        conn_id="datahub_impala",
-        sql=sales_summary_sql,
-        split_statements=True,
-        return_last=False,
-    )
+run_cde_spark_transform = CdeRunJobOperator(
+    task_id="01_run_cde_spark_transform",
+    connection_id=CDE_CONN_ID,
+    job_name=CDE_JOB_NAME,
+    variables={
+        "raw_sales_path": "{{ params.raw_sales_path }}",
+        "clean_sales_path": "{{ params.clean_sales_path }}",
+    },
+    wait=True,
+    dag=dag,
+)
 
-    run_cde_spark_transform >> run_impala_sql
+run_datahub_impala_sql = SQLExecuteQueryOperator(
+    task_id="02_run_datahub_impala_sql",
+    conn_id=IMPALA_CONN_ID,
+    sql=create_sales_summary_sql(),
+    split_statements=True,
+    return_last=False,
+    show_return_value_in_logs=True,
+    dag=dag,
+)
+
+run_cde_spark_transform >> run_datahub_impala_sql
