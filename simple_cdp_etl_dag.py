@@ -77,7 +77,7 @@ with DAG(
             description="Data Hub Impala database used by the SQL step.",
         ),
         "cde_job_name": Param(
-            "simple-cdp-sales-cleanup",
+            "simple-cdp-sales-etl",
             type="string",
             description="Existing CDE Spark job that runs spark/jobs/clean_sales.py.",
         ),
