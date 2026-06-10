@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.models.param import Param
+from airflow.operators.python import PythonOperator
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from cloudera.airflow.providers.operators.cde import CdeRunJobOperator
 
@@ -61,6 +62,24 @@ def create_sales_summary_sql() -> str:
     return sql
 
 
+def validate_runtime_config(**context) -> None:
+    params = context["params"]
+    raw_sales_path = params["raw_sales_path"]
+    clean_sales_path = params["clean_sales_path"]
+    impala_database = params["impala_database"]
+
+    if not raw_sales_path.startswith("s3a://"):
+        raise ValueError("raw_sales_path must start with s3a://")
+    if not clean_sales_path.startswith("s3a://"):
+        raise ValueError("clean_sales_path must start with s3a://")
+    if not impala_database.strip():
+        raise ValueError("impala_database is required")
+
+    print(f"raw_sales_path={raw_sales_path}")
+    print(f"clean_sales_path={clean_sales_path}")
+    print(f"impala_database={impala_database}")
+
+
 dag = DAG(
     dag_id=DAG_ID,
     description="Simple CDP ETL using CDE and SQL operators.",
@@ -88,8 +107,14 @@ dag = DAG(
     tags=["cdp", "cde", "spark", "impala", "example"],
 )
 
+validate_config = PythonOperator(
+    task_id="01_validate_runtime_config",
+    python_callable=validate_runtime_config,
+    dag=dag,
+)
+
 run_cde_spark_transform = CdeRunJobOperator(
-    task_id="01_run_cde_spark_transform",
+    task_id="02_run_cde_spark_transform",
     connection_id=CDE_CONN_ID,
     job_name=CDE_JOB_NAME,
     variables={
@@ -101,7 +126,7 @@ run_cde_spark_transform = CdeRunJobOperator(
 )
 
 run_datahub_impala_sql = SQLExecuteQueryOperator(
-    task_id="02_run_datahub_impala_sql",
+    task_id="03_run_datahub_impala_sql",
     conn_id=IMPALA_CONN_ID,
     sql=create_sales_summary_sql(),
     split_statements=True,
@@ -110,4 +135,4 @@ run_datahub_impala_sql = SQLExecuteQueryOperator(
     dag=dag,
 )
 
-run_cde_spark_transform >> run_datahub_impala_sql
+validate_config >> run_cde_spark_transform >> run_datahub_impala_sql
