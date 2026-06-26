@@ -89,12 +89,12 @@ dag = DAG(
     default_args=default_args,
     params={
         "raw_sales_path": Param(
-            "s3a://sstsandbox-buk-9f833afb/data/raw/",
+            "s3a://porscheenv-buk-3b2308dc/data/raw/",
             type="string",
             description="S3/data lake folder containing the raw sales CSV file.",
         ),
         "clean_sales_path": Param(
-            "s3a://sstsandbox-buk-9f833afb/data/curated/sales_clean",
+            "s3a://porscheenv-buk-3b2308dc/data/curated/sales_clean",
             type="string",
             description="S3/data lake path where Spark writes clean Parquet output.",
         ),
