@@ -21,7 +21,7 @@ from pipeline_settings import (
     TEMP_S3_URI,
 )
 
-SQL_DIR = Path(__file__).resolve().parents[1] / "sql"
+SQL_DIR = Path(__file__).resolve().parent / "sql"
 BUSINESS_DATE_TEMPLATE = (
     "{{ dag_run.conf.get('business_date', macros.datetime.utcnow().strftime('%Y-%m-%d')) }}"
 )
