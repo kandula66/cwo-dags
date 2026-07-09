@@ -33,8 +33,8 @@ WHERE business_date = '{{ business_date }}';
 SELECT
     'vehicle_health_enriched' AS table_name,
     staging.row_count AS staging_row_count,
-    iceberg.row_count AS iceberg_row_count,
-    iceberg.row_count - staging.row_count AS row_count_delta
+    gold.row_count AS iceberg_row_count,
+    gold.row_count - staging.row_count AS row_count_delta
 FROM
     (
         SELECT COUNT(*) AS row_count
@@ -45,13 +45,13 @@ FROM
         SELECT COUNT(*) AS row_count
         FROM {{ gold_db }}.vehicle_health_enriched
         WHERE business_date = '{{ business_date }}'
-    ) iceberg;
+    ) gold;
 
 SELECT
     'daily_vehicle_health_summary' AS table_name,
     staging.row_count AS staging_row_count,
-    iceberg.row_count AS iceberg_row_count,
-    iceberg.row_count - staging.row_count AS row_count_delta
+    gold.row_count AS iceberg_row_count,
+    gold.row_count - staging.row_count AS row_count_delta
 FROM
     (
         SELECT COUNT(*) AS row_count
@@ -62,13 +62,13 @@ FROM
         SELECT COUNT(*) AS row_count
         FROM {{ gold_db }}.daily_vehicle_health_summary
         WHERE business_date = '{{ business_date }}'
-    ) iceberg;
+    ) gold;
 
 SELECT
     'service_kpi_summary' AS table_name,
     staging.row_count AS staging_row_count,
-    iceberg.row_count AS iceberg_row_count,
-    iceberg.row_count - staging.row_count AS row_count_delta
+    gold.row_count AS iceberg_row_count,
+    gold.row_count - staging.row_count AS row_count_delta
 FROM
     (
         SELECT COUNT(*) AS row_count
@@ -79,13 +79,13 @@ FROM
         SELECT COUNT(*) AS row_count
         FROM {{ gold_db }}.service_kpi_summary
         WHERE business_date = '{{ business_date }}'
-    ) iceberg;
+    ) gold;
 
 SELECT
     'data_quality_report' AS table_name,
     staging.row_count AS staging_row_count,
-    iceberg.row_count AS iceberg_row_count,
-    iceberg.row_count - staging.row_count AS row_count_delta
+    gold.row_count AS iceberg_row_count,
+    gold.row_count - staging.row_count AS row_count_delta
 FROM
     (
         SELECT COUNT(*) AS row_count
@@ -96,7 +96,7 @@ FROM
         SELECT COUNT(*) AS row_count
         FROM {{ gold_db }}.data_quality_report
         WHERE business_date = '{{ business_date }}'
-    ) iceberg;
+    ) gold;
 
 SELECT
     dataset_name,
