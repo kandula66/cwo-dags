@@ -16,11 +16,11 @@ from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from cloudera.airflow.providers.operators.cde import CdeRunJobOperator
 
 DAG_ID = "simple_cdp_sales_etl"
-CDE_CONN_ID = "sstcwocde"
+CDE_CONN_ID = "dl_cde"
 CDE_JOB_NAME = "simple-cdp-sales-etl"
-IMPALA_CONN_ID = "datahub_impala"
+IMPALA_CONN_ID = "data_hubimpala"
 
-
+Now
 default_args = {
     "owner": "data-engineering",
     "retries": 1,
@@ -89,12 +89,12 @@ dag = DAG(
     default_args=default_args,
     params={
         "raw_sales_path": Param(
-            "s3a://porscheenv-buk-3b2308dc/data/raw/",
+            "s3a://ccf-s3-porsche-sst-backup/data/porsche/raw/",
             type="string",
             description="S3/data lake folder containing the raw sales CSV file.",
         ),
         "clean_sales_path": Param(
-            "s3a://porscheenv-buk-3b2308dc/data/curated/sales_clean",
+            "s3a://ccf-s3-porsche-sst-backup/data/porsche/curated/sales_clean",
             type="string",
             description="S3/data lake path where Spark writes clean Parquet output.",
         ),
